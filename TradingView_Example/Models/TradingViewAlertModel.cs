@@ -18,9 +18,13 @@ namespace TradingView_Example.Models
 
         public string Symbol { get; set; }
 
+        public string Exchange { get; set; }
+
         public decimal Volume { get; set; }
 
         public TradingViewAlertStatus Status { get; set; }
+
+        public TradingViewPriceState PriceState { get; set; }
 
         public DateTime? ExirationTime { get; set; }
 

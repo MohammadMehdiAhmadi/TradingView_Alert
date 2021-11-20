@@ -15,9 +15,11 @@ namespace TradingView_Example
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            var container = SimpleInjectorConfig.Setup();
+            //var container = SimpleInjectorConfig.Setup();
 
-            Application.Run(container.GetInstance<MainForm>());
+            //Application.Run(container.GetInstance<MainForm>());
+
+            Application.Run(new MainForm());
         }
     }
 }

@@ -2,6 +2,8 @@
 {
     public enum TradingViewAlertStatus
     {
-        Active = 0
+        Active = 0,
+        StopedTrigred = 1,
+        StopedExpired = 2
     }
 }

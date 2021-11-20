@@ -127,13 +127,13 @@ namespace TradingView_Example
             this.toolStripMenuItemAddAlert,
             this.toolStripMenuItemRemoveAlert});
             this.contextMenuStriplistViewSymbolList.Name = "contextMenuStriplistViewSymbolList";
-            this.contextMenuStriplistViewSymbolList.Size = new System.Drawing.Size(218, 48);
+            this.contextMenuStriplistViewSymbolList.Size = new System.Drawing.Size(193, 48);
             this.contextMenuStriplistViewSymbolList.Opening += new System.ComponentModel.CancelEventHandler(this.ContextMenuStriplistViewSymbolList_Opening);
             // 
             // toolStripMenuItemAddAlert
             // 
             this.toolStripMenuItemAddAlert.Name = "toolStripMenuItemAddAlert";
-            this.toolStripMenuItemAddAlert.Size = new System.Drawing.Size(217, 22);
+            this.toolStripMenuItemAddAlert.Size = new System.Drawing.Size(192, 22);
             this.toolStripMenuItemAddAlert.Tag = "Add Alert For {0}";
             this.toolStripMenuItemAddAlert.Text = "Add Alert For {0}";
             this.toolStripMenuItemAddAlert.Click += new System.EventHandler(this.ToolStripMenuItemAddAlert_Click);
@@ -141,7 +141,7 @@ namespace TradingView_Example
             // toolStripMenuItemRemoveAlert
             // 
             this.toolStripMenuItemRemoveAlert.Name = "toolStripMenuItemRemoveAlert";
-            this.toolStripMenuItemRemoveAlert.Size = new System.Drawing.Size(217, 22);
+            this.toolStripMenuItemRemoveAlert.Size = new System.Drawing.Size(192, 22);
             this.toolStripMenuItemRemoveAlert.Tag = "Remove Alert For {0}";
             this.toolStripMenuItemRemoveAlert.Text = "Remove Alert For {0}";
             this.toolStripMenuItemRemoveAlert.Visible = false;
@@ -159,13 +159,14 @@ namespace TradingView_Example
             // 
             // textBoxSymbol
             // 
+            this.textBoxSymbol.BackColor = System.Drawing.SystemColors.Window;
             this.textBoxSymbol.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
             this.textBoxSymbol.Enabled = false;
             this.textBoxSymbol.Font = new System.Drawing.Font("Tahoma", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.textBoxSymbol.ForeColor = System.Drawing.SystemColors.WindowText;
             this.textBoxSymbol.Location = new System.Drawing.Point(422, 54);
             this.textBoxSymbol.Name = "textBoxSymbol";
-            this.textBoxSymbol.Size = new System.Drawing.Size(200, 26);
+            this.textBoxSymbol.Size = new System.Drawing.Size(200, 22);
             this.textBoxSymbol.TabIndex = 3;
             this.textBoxSymbol.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             this.textBoxSymbol.TextChanged += new System.EventHandler(this.TextBoxSymbol_TextChanged);
@@ -193,7 +194,7 @@ namespace TradingView_Example
             this.toolStripTextBoxUsername});
             this.menuStripMain.Location = new System.Drawing.Point(0, 0);
             this.menuStripMain.Name = "menuStripMain";
-            this.menuStripMain.Size = new System.Drawing.Size(634, 28);
+            this.menuStripMain.Size = new System.Drawing.Size(634, 24);
             this.menuStripMain.TabIndex = 5;
             this.menuStripMain.Text = "menuStrip1";
             // 
@@ -202,7 +203,7 @@ namespace TradingView_Example
             this.optionsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.alertsToolStripMenuItem});
             this.optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
-            this.optionsToolStripMenuItem.Size = new System.Drawing.Size(71, 24);
+            this.optionsToolStripMenuItem.Size = new System.Drawing.Size(61, 20);
             this.optionsToolStripMenuItem.Text = "Options";
             this.optionsToolStripMenuItem.Visible = false;
             // 
@@ -210,7 +211,7 @@ namespace TradingView_Example
             // 
             this.alertsToolStripMenuItem.Enabled = false;
             this.alertsToolStripMenuItem.Name = "alertsToolStripMenuItem";
-            this.alertsToolStripMenuItem.Size = new System.Drawing.Size(126, 26);
+            this.alertsToolStripMenuItem.Size = new System.Drawing.Size(105, 22);
             this.alertsToolStripMenuItem.Text = "Alerts";
             this.alertsToolStripMenuItem.Click += new System.EventHandler(this.AlertsToolStripMenuItem_Click);
             // 
@@ -218,14 +219,14 @@ namespace TradingView_Example
             // 
             this.loginToolStripMenuItem.Enabled = false;
             this.loginToolStripMenuItem.Name = "loginToolStripMenuItem";
-            this.loginToolStripMenuItem.Size = new System.Drawing.Size(55, 24);
+            this.loginToolStripMenuItem.Size = new System.Drawing.Size(48, 20);
             this.loginToolStripMenuItem.Text = "Login";
             this.loginToolStripMenuItem.Click += new System.EventHandler(this.LoginToolStripMenuItem_Click);
             // 
             // logoutToolStripMenuItem
             // 
             this.logoutToolStripMenuItem.Name = "logoutToolStripMenuItem";
-            this.logoutToolStripMenuItem.Size = new System.Drawing.Size(66, 24);
+            this.logoutToolStripMenuItem.Size = new System.Drawing.Size(58, 20);
             this.logoutToolStripMenuItem.Text = "Logout";
             this.logoutToolStripMenuItem.Visible = false;
             this.logoutToolStripMenuItem.Click += new System.EventHandler(this.LogoutToolStripMenuItem_Click);
@@ -241,7 +242,7 @@ namespace TradingView_Example
             this.toolStripTextBoxUsername.Margin = new System.Windows.Forms.Padding(1, 0, 10, 0);
             this.toolStripTextBoxUsername.Name = "toolStripTextBoxUsername";
             this.toolStripTextBoxUsername.ReadOnly = true;
-            this.toolStripTextBoxUsername.Size = new System.Drawing.Size(200, 24);
+            this.toolStripTextBoxUsername.Size = new System.Drawing.Size(200, 20);
             this.toolStripTextBoxUsername.TextBoxTextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // listViewSearchResult
@@ -295,13 +296,13 @@ namespace TradingView_Example
             "Uniswap"});
             this.comboBoxExchanges.Location = new System.Drawing.Point(422, 27);
             this.comboBoxExchanges.Name = "comboBoxExchanges";
-            this.comboBoxExchanges.Size = new System.Drawing.Size(200, 25);
+            this.comboBoxExchanges.Size = new System.Drawing.Size(200, 21);
             this.comboBoxExchanges.TabIndex = 7;
             this.comboBoxExchanges.SelectedIndexChanged += new System.EventHandler(this.ComboBoxExchanges_SelectedIndexChanged);
             // 
             // MainForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 17F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(634, 461);
             this.Controls.Add(this.comboBoxExchanges);

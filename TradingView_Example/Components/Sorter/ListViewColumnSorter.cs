@@ -53,6 +53,7 @@ namespace TradingView_Example.Components.Sorter
         /// Case insensitive comparer object
         /// </summary>
         private readonly CaseInsensitiveComparer ObjectCompare;
+        private readonly ListViewColumnComparer ColumnComparer;
 
         /// <summary>
         /// Class constructor.  Initializes various elements
@@ -64,6 +65,7 @@ namespace TradingView_Example.Components.Sorter
 
             // Initialize the CaseInsensitiveComparer object
             ObjectCompare = new CaseInsensitiveComparer();
+            ColumnComparer = new ListViewColumnComparer();
         }
 
         /// <summary>
@@ -92,7 +94,7 @@ namespace TradingView_Example.Components.Sorter
                 return listviewX.SubItems[0].Text == "*NEW" ? 1 : -1;
 
             // Compare the two items
-            compareResult = ObjectCompare.Compare(listviewX.SubItems[ColumnToSort].Text, listviewY.SubItems[ColumnToSort].Text);
+            compareResult = ColumnComparer.Compare(listviewX.SubItems[ColumnToSort].Text, listviewY.SubItems[ColumnToSort].Text);
 
             // Calculate correct return value based on object comparison
             if (OrderOfSort == SortOrder.Ascending)

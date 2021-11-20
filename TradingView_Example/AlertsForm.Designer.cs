@@ -39,6 +39,7 @@ namespace TradingView_Example
             this.columnHeaderAlertExpirationTime = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.columnHeaderAlertMessage = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.groupBoxAddAlert = new System.Windows.Forms.GroupBox();
+            this.numericUpDownAlertValue = new TradingView_Example.Components.Controls.CustomNumericUpDown();
             this.textBoxAlertName = new System.Windows.Forms.TextBox();
             this.textBoxAlertMessage = new System.Windows.Forms.TextBox();
             this.checkBoxAlertEnableExT = new System.Windows.Forms.CheckBox();
@@ -51,7 +52,7 @@ namespace TradingView_Example
             this.label5 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.comboBoxAlertSymbol = new System.Windows.Forms.ComboBox();
-            this.numericUpDownAlertValue = new TradingView_Example.Components.Controls.CustomNumericUpDown();
+            this.buttonAlertCancel = new System.Windows.Forms.Button();
             this.groupBoxAddAlert.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDownAlertValue)).BeginInit();
             this.SuspendLayout();
@@ -78,7 +79,7 @@ namespace TradingView_Example
             this.listViewAletsList.TabIndex = 8;
             this.listViewAletsList.UseCompatibleStateImageBehavior = false;
             this.listViewAletsList.View = System.Windows.Forms.View.Details;
-            this.listViewAletsList.SelectedIndexChanged += new System.EventHandler(this.ListViewAletsList_SelectedIndexChanged);
+            this.listViewAletsList.DoubleClick += new System.EventHandler(this.ListViewAletsList_DoubleClick);
             // 
             // columnHeaderAlertNumber
             // 
@@ -124,6 +125,7 @@ namespace TradingView_Example
             this.groupBoxAddAlert.Controls.Add(this.checkBoxAlertEnableExT);
             this.groupBoxAddAlert.Controls.Add(this.dateTimePickerAlertExT);
             this.groupBoxAddAlert.Controls.Add(this.buttonRemoveAlert);
+            this.groupBoxAddAlert.Controls.Add(this.buttonAlertCancel);
             this.groupBoxAddAlert.Controls.Add(this.buttonAddOrEditAlert);
             this.groupBoxAddAlert.Controls.Add(this.label4);
             this.groupBoxAddAlert.Controls.Add(this.label2);
@@ -138,12 +140,34 @@ namespace TradingView_Example
             this.groupBoxAddAlert.TabStop = false;
             this.groupBoxAddAlert.Text = "Add Alert";
             // 
+            // numericUpDownAlertValue
+            // 
+            this.numericUpDownAlertValue.DecimalPlaces = 8;
+            this.numericUpDownAlertValue.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.numericUpDownAlertValue.Increment = new decimal(new int[] {
+            1,
+            0,
+            0,
+            131072});
+            this.numericUpDownAlertValue.Location = new System.Drawing.Point(113, 74);
+            this.numericUpDownAlertValue.Maximum = new decimal(new int[] {
+            -469762049,
+            -590869294,
+            5421010,
+            0});
+            this.numericUpDownAlertValue.Name = "numericUpDownAlertValue";
+            this.numericUpDownAlertValue.Size = new System.Drawing.Size(200, 21);
+            this.numericUpDownAlertValue.TabIndex = 2;
+            this.numericUpDownAlertValue.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.numericUpDownAlertValue.ThousandsSeparator = true;
+            this.numericUpDownAlertValue.ValueChanged += new System.EventHandler(this.NumericUpDownAlertValue_ValueChanged);
+            // 
             // textBoxAlertName
             // 
             this.textBoxAlertName.Location = new System.Drawing.Point(113, 20);
             this.textBoxAlertName.MaxLength = 32;
             this.textBoxAlertName.Name = "textBoxAlertName";
-            this.textBoxAlertName.Size = new System.Drawing.Size(200, 24);
+            this.textBoxAlertName.Size = new System.Drawing.Size(200, 21);
             this.textBoxAlertName.TabIndex = 0;
             // 
             // textBoxAlertMessage
@@ -160,7 +184,7 @@ namespace TradingView_Example
             this.checkBoxAlertEnableExT.AutoSize = true;
             this.checkBoxAlertEnableExT.Location = new System.Drawing.Point(96, 106);
             this.checkBoxAlertEnableExT.Name = "checkBoxAlertEnableExT";
-            this.checkBoxAlertEnableExT.Size = new System.Drawing.Size(18, 17);
+            this.checkBoxAlertEnableExT.Size = new System.Drawing.Size(15, 14);
             this.checkBoxAlertEnableExT.TabIndex = 3;
             this.checkBoxAlertEnableExT.UseVisualStyleBackColor = true;
             this.checkBoxAlertEnableExT.CheckedChanged += new System.EventHandler(this.CheckBoxAlertEnableExT_CheckedChanged);
@@ -172,7 +196,7 @@ namespace TradingView_Example
             this.dateTimePickerAlertExT.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dateTimePickerAlertExT.Location = new System.Drawing.Point(113, 101);
             this.dateTimePickerAlertExT.Name = "dateTimePickerAlertExT";
-            this.dateTimePickerAlertExT.Size = new System.Drawing.Size(200, 24);
+            this.dateTimePickerAlertExT.Size = new System.Drawing.Size(200, 21);
             this.dateTimePickerAlertExT.TabIndex = 4;
             // 
             // buttonRemoveAlert
@@ -201,7 +225,7 @@ namespace TradingView_Example
             this.label4.AutoSize = true;
             this.label4.Location = new System.Drawing.Point(33, 24);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(78, 17);
+            this.label4.Size = new System.Drawing.Size(63, 13);
             this.label4.TabIndex = 1;
             this.label4.Text = "Alert name:";
             // 
@@ -210,7 +234,7 @@ namespace TradingView_Example
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(8, 105);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(111, 17);
+            this.label2.Size = new System.Drawing.Size(88, 13);
             this.label2.TabIndex = 1;
             this.label2.Text = "Expireation time:";
             // 
@@ -219,7 +243,7 @@ namespace TradingView_Example
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(43, 131);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(64, 17);
+            this.label3.Size = new System.Drawing.Size(53, 13);
             this.label3.TabIndex = 1;
             this.label3.Text = "Message:";
             // 
@@ -228,7 +252,7 @@ namespace TradingView_Example
             this.label5.AutoSize = true;
             this.label5.Location = new System.Drawing.Point(59, 77);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(45, 17);
+            this.label5.Size = new System.Drawing.Size(37, 13);
             this.label5.TabIndex = 1;
             this.label5.Text = "Value:";
             // 
@@ -237,7 +261,7 @@ namespace TradingView_Example
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(40, 51);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(71, 17);
+            this.label1.Size = new System.Drawing.Size(56, 13);
             this.label1.TabIndex = 1;
             this.label1.Text = "Condition:";
             // 
@@ -247,31 +271,20 @@ namespace TradingView_Example
             this.comboBoxAlertSymbol.FormattingEnabled = true;
             this.comboBoxAlertSymbol.Location = new System.Drawing.Point(113, 47);
             this.comboBoxAlertSymbol.Name = "comboBoxAlertSymbol";
-            this.comboBoxAlertSymbol.Size = new System.Drawing.Size(200, 25);
+            this.comboBoxAlertSymbol.Size = new System.Drawing.Size(200, 21);
             this.comboBoxAlertSymbol.TabIndex = 1;
             this.comboBoxAlertSymbol.SelectedIndexChanged += new System.EventHandler(this.ComboBoxAlertSymbol_SelectedIndexChanged);
             // 
-            // numericUpDownAlertValue
+            // buttonAlertCancel
             // 
-            this.numericUpDownAlertValue.DecimalPlaces = 8;
-            this.numericUpDownAlertValue.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.numericUpDownAlertValue.Increment = new decimal(new int[] {
-            1,
-            0,
-            0,
-            131072});
-            this.numericUpDownAlertValue.Location = new System.Drawing.Point(113, 74);
-            this.numericUpDownAlertValue.Maximum = new decimal(new int[] {
-            -469762049,
-            -590869294,
-            5421010,
-            0});
-            this.numericUpDownAlertValue.Name = "numericUpDownAlertValue";
-            this.numericUpDownAlertValue.Size = new System.Drawing.Size(200, 24);
-            this.numericUpDownAlertValue.TabIndex = 2;
-            this.numericUpDownAlertValue.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            this.numericUpDownAlertValue.ThousandsSeparator = true;
-            this.numericUpDownAlertValue.ValueChanged += new System.EventHandler(this.NumericUpDownAlertValue_ValueChanged);
+            this.buttonAlertCancel.Location = new System.Drawing.Point(6, 187);
+            this.buttonAlertCancel.Name = "buttonAlertCancel";
+            this.buttonAlertCancel.Size = new System.Drawing.Size(75, 23);
+            this.buttonAlertCancel.TabIndex = 7;
+            this.buttonAlertCancel.Text = "Cancel";
+            this.buttonAlertCancel.UseVisualStyleBackColor = true;
+            this.buttonAlertCancel.Visible = false;
+            this.buttonAlertCancel.Click += new System.EventHandler(this.ButtonAlertCancel_Click);
             // 
             // AlertsForm
             // 
@@ -321,5 +334,6 @@ namespace TradingView_Example
         private CustomNumericUpDown numericUpDownAlertValue;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.ColumnHeader columnHeaderAlertPrice;
+        private System.Windows.Forms.Button buttonAlertCancel;
     }
 }

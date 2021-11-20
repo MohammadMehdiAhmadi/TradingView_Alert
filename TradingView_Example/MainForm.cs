@@ -7,7 +7,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using TradingView_Example.Common.Extensions;
-using TradingView_Example.Components;
 using TradingView_Example.Components.Sorter;
 using TradingView_Example.Properties;
 using TradingView_Example.Services.TradingView;
@@ -15,7 +14,7 @@ using TradingView_Example.Services.TradingView.Model;
 
 namespace TradingView_Example
 {
-    public partial class MainForm : BaseForm
+    public partial class MainForm : Form
     {
         #region Fields
 
@@ -27,21 +26,21 @@ namespace TradingView_Example
 
         private ListViewColumnSorter _listViewColumnSorter;
 
+        public static IList<TradingViewSymbol> SelectedSymbols { get; set; }
+
         #endregion
 
         #region Ctor
 
-        public MainForm(
-            AlertsForm alertsForm,
-            LoginForm loginForm,
-            ITradingViewClient tradingViewClient)
+        public MainForm()
         {
             InitializeComponent();
             CustomInitializeComponent();
 
-            _alertsForm = alertsForm;
-            _loginForm = loginForm;
-            _tradingViewClient = tradingViewClient;
+            _tradingViewClient = new TradingViewClient();
+
+            _alertsForm = new AlertsForm();
+            _loginForm = new LoginForm(_tradingViewClient);
         }
 
         #endregion
@@ -65,71 +64,29 @@ namespace TradingView_Example
             var connectResult = await _tradingViewClient.SocketConnectAsync(Settings.Default.AuthToken).ConfigureAwait(false);
             if (!connectResult)
                 MessageBox.Show("Problem connecting to the socket!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        
-            Action safeWrite = delegate 
-            { 
-                loginToolStripMenuItem.Enabled = true; 
+
+            Action safeWrite = delegate
+            {
+                loginToolStripMenuItem.Enabled = true;
             };
             listViewSymbolList.Invoke(safeWrite);
 
-            if (Settings.Default.Symbols != null && Settings.Default.Symbols.Count > 0)
+            if (Settings.Default.Symbols.Count > 0)
             {
-                var symbols = Settings.Default.Symbols
+                SelectedSymbols = Settings.Default.Symbols
                     .Cast<string>()
                     .Select(p => new TradingViewSymbol { Exchange = p.Split(':')[0], Symbol = p.Split(':')[1] })
                     .ToList();
 
-                //Settings.Default.Symbols.Clear();
-
-                await SubscribeSymbolsAsync(symbols).ConfigureAwait(false);
+                await SubscribeSymbolsAsync(SelectedSymbols).ConfigureAwait(false);
             }
 
-            await Task.Factory.StartNew(async () => await _tradingViewClient.LestenToAsync(data => UpdateListViewSymbol(data))).ConfigureAwait(false);
+            await Task.Factory.StartNew(async () =>
+                await _tradingViewClient.LestenToAsync(data =>
+                    listViewSymbolList.InvokeUi(() =>
+                        UpdateListViewSymbolList(data)))).ConfigureAwait(false);
 
             menuStripMain.InvokeUi(() => alertsToolStripMenuItem.Enabled = true);
-        }
-
-        private void UpdateListViewSymbol(TradingViewSymbolPrice data)
-        {
-            if (listViewSymbolList.InvokeRequired)
-            {
-                Action safeWrite = delegate { UpdateListViewSymbolList(data); };
-
-                listViewSymbolList.Invoke(safeWrite);
-            }
-            else
-                UpdateListViewSymbolList(data);
-        }
-
-        private void UpdateListViewSymbolList(TradingViewSymbolPrice data)
-        {
-            var item = listViewSymbolList.Items[data.Symbol];
-            if (item == null)
-                return;
-
-            if (data.Price.HasValue)
-                item.SubItems[2].Text = data.Price.ToString();
-
-            if (data.Change.HasValue)
-            {
-                item.SubItems[3].Text = data.Change.ToString();
-
-                if (data.Change.Value > 0)
-                {
-                    item.ForeColor = Color.DarkGreen;
-                    item.BackColor = Color.Honeydew;
-                    item.UseItemStyleForSubItems = true;
-                }
-                else
-                {
-                    item.ForeColor = Color.DarkRed;
-                    item.BackColor = Color.MistyRose;
-                    item.UseItemStyleForSubItems = true;
-                }
-            }
-
-            if (data.ChangeP.HasValue)
-                item.SubItems[4].Text = $"{data.ChangeP}%";
         }
 
         #endregion
@@ -218,6 +175,14 @@ namespace TradingView_Example
                 .Select(p => (TradingViewSymbol)p.Tag)
                 .ToList();
 
+            selectedSymbolItems.ForEach(p => 
+            {
+                SelectedSymbols.Add(p);
+                Settings.Default.Symbols.Add(p.ToString());
+            });
+
+            Settings.Default.Save();
+
             await SubscribeSymbolsAsync(selectedSymbolItems);
         }
 
@@ -250,15 +215,11 @@ namespace TradingView_Example
 
                 listViewSymbolList.InvokeUi(() => listViewSymbolList.Items.Add(listViewItem));
 
-                //Settings.Default.Symbols.Add(key);
-
                 await _tradingViewClient.SubscribeSymbolsAsync(key);
             }
 
-            Settings.Default.Save();
-
             listViewSymbolList.InvokeUi(() => listViewSearchResult.SelectedItems.Clear());
-        }  
+        }
 
         #endregion
 
@@ -292,17 +253,14 @@ namespace TradingView_Example
             Settings.Default.Symbols.Remove(selectedItem.Name);
             listViewSymbolList.Items.Remove(selectedItem);
 
+            SelectedSymbols.Remove(SelectedSymbols.FirstOrDefault(p => selectedItem.Name == p.ToString()));
+
             Settings.Default.Save();
         }
 
         private async Task UnsubscribeSymbolsAsync()
         {
-            var symbols = Settings.Default.Symbols
-                .Cast<string>()
-                .Select(p => new TradingViewSymbol { Exchange = p.Split(':')[0], Symbol = p.Split(':')[1] })
-                .ToList();
-
-            foreach (var item in symbols)
+            foreach (var item in SelectedSymbols)
                 await _tradingViewClient.UnsubscribeSymbolsAsync(item.ToString());
         }
 
@@ -323,17 +281,7 @@ namespace TradingView_Example
 
         private void AlertsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var symbols = Settings.Default.Symbols
-                .Cast<string>()
-                .Select(p => new TradingViewSymbol 
-                { 
-                    Exchange = p.Split(':')[0], 
-                    Symbol = p.Split(':')[1],
-                    CurrentPrice = Convert.ToDecimal(listViewSymbolList.Items.Find(p, false)[0].SubItems[2].Text)
-                })
-                .ToList();
-
-            _alertsForm.ShowDialog(null, symbols);
+            _alertsForm.ShowDialog(null, SelectedSymbols);
         }
 
         #endregion
@@ -355,9 +303,16 @@ namespace TradingView_Example
 
         private async void LogoutToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            var dialogResult = MessageBox.Show($"Are you sure you want to log out?{Environment.NewLine}All your information will be deleted if you log out.", "Logout", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (dialogResult != DialogResult.Yes)
+                return;
+
+
             await UnsubscribeSymbolsAsync();
 
             Settings.Default.Reset();
+            Settings.Default.Symbols = new StringCollection();
+            SelectedSymbols = new List<TradingViewSymbol>();
 
             loginToolStripMenuItem.Visible = true;
             logoutToolStripMenuItem.Visible = false;
@@ -436,7 +391,7 @@ namespace TradingView_Example
                 if (_listViewColumnSorter.Order == SortOrder.Ascending)
                     _listViewColumnSorter.Order = SortOrder.Descending;
                 else
-                    _listViewColumnSorter.Order = SortOrder.Ascending;                
+                    _listViewColumnSorter.Order = SortOrder.Ascending;
             }
             else
             {
@@ -544,17 +499,60 @@ namespace TradingView_Example
 
         #region Utilites
 
+        #region UpdateListViewSymbolList
+
+        private void UpdateListViewSymbolList(TradingViewSymbolPrice data)
+        {
+            var item = listViewSymbolList.Items[data.Symbol];
+            if (item == null)
+                return;
+
+            if (data.Price.HasValue)
+            {
+                item.SubItems[2].Text = data.Price.Value.ToString();
+
+                _alertsForm.InvokeAlert(data);
+
+                var symbol = SelectedSymbols.FirstOrDefault(p => p.ToString() == data.Symbol);
+                symbol.CurrentPrice = data.Price.Value;
+            }
+
+            if (data.Change.HasValue)
+            {
+                item.SubItems[3].Text = data.Change.ToString();
+
+                if (data.Change.Value > 0)
+                {
+                    item.ForeColor = Color.DarkGreen;
+                    item.BackColor = Color.Honeydew;
+                    item.UseItemStyleForSubItems = true;
+                }
+                else
+                {
+                    item.ForeColor = Color.DarkRed;
+                    item.BackColor = Color.MistyRose;
+                    item.UseItemStyleForSubItems = true;
+                }
+            }
+
+            if (data.ChangeP.HasValue)
+                item.SubItems[4].Text = $"{data.ChangeP}%";
+        }
+
+        #endregion
+
         #region CustomInitializeComponent
 
         private void CustomInitializeComponent()
         {
             _listViewColumnSorter = new ListViewColumnSorter();
+            SelectedSymbols = new List<TradingViewSymbol>();
 
             listViewSymbolList.ListViewItemSorter = _listViewColumnSorter;
             listViewSymbolList.InsertionMark.Color = Color.Green;
 
             if (Settings.Default.Symbols == null)
-                Settings.Default.Symbols = new StringCollection();
+                Settings.Default.Symbols = new StringCollection();            
         }
 
         #endregion
@@ -686,7 +684,6 @@ namespace TradingView_Example
         private void StoreListViewSearchResultSortChanges()
         {
             Settings.Default.Symbols.Clear();
-
 
             var selectedSymbolItems = listViewSymbolList.Items
                 .Cast<ListViewItem>()
