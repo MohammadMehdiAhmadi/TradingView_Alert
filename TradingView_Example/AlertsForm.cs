@@ -111,7 +111,7 @@ namespace TradingView_Example
                 if (alert.Status != TradingViewAlertStatus.Active)
                     continue;
 
-                if (alert.ExirationTime.HasValue && alert.ExirationTime.Value > DateTime.Now)
+                if (alert.ExirationTime.HasValue && alert.ExirationTime.Value < DateTime.Now)
                 {
                     alert.Status = TradingViewAlertStatus.StopedExpired;
 
@@ -191,13 +191,16 @@ namespace TradingView_Example
 
         private void ComboBoxAlertSymbol_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var selectedSymbol = comboBoxAlertSymbol.SelectedItem as TradingViewSymbol;
+            if (!(comboBoxAlertSymbol.SelectedItem is TradingViewSymbol selectedSymbol))
+                return;
+
             TradingViewSymbol = selectedSymbol;
 
             Text = $"[{selectedSymbol}] Alerts";
 
             GenerateAlertName(selectedSymbol);
 
+            comboBoxAlertType.Items[0] = $"Price ({selectedSymbol})";
             textBoxAlertMessage.Text = $"{selectedSymbol} Crossing ({selectedSymbol.CurrentPrice})";
             numericUpDownAlertValue.Value = selectedSymbol.CurrentPrice;
         }
@@ -339,6 +342,7 @@ namespace TradingView_Example
         {
             dateTimePickerAlertExT.Value = DateTime.Now.AddDays(1);
             buttonAddOrEditAlert.Tag = new { EditMode = false };
+            comboBoxAlertType.SelectedIndex = 0;
         }
 
         #endregion

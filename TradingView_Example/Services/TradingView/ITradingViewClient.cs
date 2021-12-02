@@ -11,6 +11,8 @@ namespace TradingView_Example.Services.TradingView
 
         string AuthToken { get; set; }
 
+        IList<string> SubscribedSymbols { get; set; }
+
         Task<(string, TradingViewUser)> LoginAsync(string username, string password);
 
         Task<(string, IList<TradingViewSymbol>)> SearchSymbolAsync(string searchedSymbol, string exchange = null);
@@ -21,6 +23,6 @@ namespace TradingView_Example.Services.TradingView
 
         Task UnsubscribeSymbolsAsync(string symbol);
 
-        Task LestenToAsync(Action<TradingViewSymbolPrice> onMessage);
+        Task ListenToAsync(Action<TradingViewSymbolPrice> onMessage);
     }
 }

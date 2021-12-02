@@ -42,6 +42,17 @@ namespace TradingView_Example.Services.TradingView
             }
         }
 
+        public IList<string> SubscribedSymbols { get; set; }
+
+        #endregion
+
+        #region Ctor
+
+        public TradingViewClient()
+        {
+            SubscribedSymbols = new List<string>();
+        }
+
         #endregion
 
         #region Set Base Api Address
@@ -194,6 +205,8 @@ namespace TradingView_Example.Services.TradingView
         public async Task SubscribeSymbolsAsync(string symbol)
         {
             await SendString("quote_add_symbols", new[] { _sessionId, symbol });
+
+            SubscribedSymbols.Add(symbol);
         }
 
         #endregion
@@ -203,13 +216,15 @@ namespace TradingView_Example.Services.TradingView
         public async Task UnsubscribeSymbolsAsync(string symbol)
         {
             await SendString("quote_remove_symbols", new[] { _sessionId, symbol });
+
+            SubscribedSymbols.Remove(symbol);
         }
 
         #endregion
 
         #region LestenToAsync
 
-        public async Task LestenToAsync(Action<TradingViewSymbolPrice> onMessage)
+        public async Task ListenToAsync(Action<TradingViewSymbolPrice> onMessage)
         {
             var handler = new Action<TradingViewSymbolPrice>(data => onMessage(data));
 

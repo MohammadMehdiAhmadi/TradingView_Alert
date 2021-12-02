@@ -1,11 +1,17 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Configuration;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
+using System.Xml.XPath;
 using TradingView_Example.Common.Extensions;
 using TradingView_Example.Components.Sorter;
 using TradingView_Example.Properties;
@@ -20,6 +26,7 @@ namespace TradingView_Example
 
         private readonly AlertsForm _alertsForm;
         private readonly LoginForm _loginForm;
+        private readonly SettingsForm _settingsForm;
         private Timer _typingTimer;
 
         private readonly ITradingViewClient _tradingViewClient;
@@ -41,6 +48,8 @@ namespace TradingView_Example
 
             _alertsForm = new AlertsForm();
             _loginForm = new LoginForm(_tradingViewClient);
+
+            _settingsForm = new SettingsForm();
         }
 
         #endregion
@@ -65,28 +74,53 @@ namespace TradingView_Example
             if (!connectResult)
                 MessageBox.Show("Problem connecting to the socket!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-            Action safeWrite = delegate
-            {
-                loginToolStripMenuItem.Enabled = true;
-            };
-            listViewSymbolList.Invoke(safeWrite);
+            listViewSymbolList.InvokeUi(() => loginToolStripMenuItem.Enabled = true);
 
             if (Settings.Default.Symbols.Count > 0)
             {
-                SelectedSymbols = Settings.Default.Symbols
-                    .Cast<string>()
-                    .Select(p => new TradingViewSymbol { Exchange = p.Split(':')[0], Symbol = p.Split(':')[1] })
-                    .ToList();
+                LoadSelectedSymbols(Settings.Default.Symbols);
+
+                LoadSymbolsOnListView(SelectedSymbols, clearItems: true);
 
                 await SubscribeSymbolsAsync(SelectedSymbols).ConfigureAwait(false);
             }
 
-            await Task.Factory.StartNew(async () =>
-                await _tradingViewClient.LestenToAsync(data =>
-                    listViewSymbolList.InvokeUi(() =>
-                        UpdateListViewSymbolList(data)))).ConfigureAwait(false);
+            await Task.Factory.StartNew(async () => await _tradingViewClient.ListenToAsync(data =>
+                listViewSymbolList.InvokeUi(() =>
+                {
+                    UpdateSelectedSymbols(data);
+                    UpdateListViewSymbolList(data);
+                }))).ConfigureAwait(false);
 
             menuStripMain.InvokeUi(() => alertsToolStripMenuItem.Enabled = true);
+        }
+
+        private void LoadSymbolsOnListView(IList<TradingViewSymbol> selectedSymbols, bool clearItems = false)
+        {
+            if (clearItems)
+                listViewSymbolList.InvokeUi(() => listViewSymbolList.Items.Clear());
+
+            foreach (var symbol in selectedSymbols)
+            {
+                var row = new[] { symbol.Symbol, symbol.Exchange, "", "", "" };
+                var listViewItem = new ListViewItem(row)
+                {
+                    Tag = symbol,
+                    Name = symbol.ToString()
+                };
+
+                listViewSymbolList.InvokeUi(() => listViewSymbolList.Items.Add(listViewItem));
+            }
+
+            listViewSearchResult.InvokeUi(() => listViewSearchResult.SelectedItems.Clear());
+        }
+
+        private void LoadSelectedSymbols(StringCollection symbols)
+        {
+            SelectedSymbols = symbols
+                .Cast<string>()
+                .Select(p => new TradingViewSymbol { Exchange = p.Split(':')[0], Symbol = p.Split(':')[1] })
+                .ToList();
         }
 
         #endregion
@@ -98,7 +132,7 @@ namespace TradingView_Example
             var @this = sender as TextBox;
             if (@this.Text.IsNullOrEmpty())
             {
-                await SearchSymbolAsync();
+                await SearchSymbolAsync().ConfigureAwait(false);
                 return;
             }
 
@@ -150,8 +184,8 @@ namespace TradingView_Example
 
         private async void ListViewSearchResult_DoubleClick(object sender, EventArgs e)
         {
-            await AddSymbol();
-            textBoxSymbol.Clear();
+            await AddSymbol().ConfigureAwait(false);
+            textBoxSymbol.InvokeUi(() => textBoxSymbol.Clear());
         }
 
         #endregion
@@ -160,8 +194,8 @@ namespace TradingView_Example
 
         private async void ButtonAddSymbol_Click(object sender, EventArgs e)
         {
-            await AddSymbol();
-            textBoxSymbol.Clear();
+            await AddSymbol().ConfigureAwait(false);
+            textBoxSymbol.InvokeUi(() => textBoxSymbol.Clear());
         }
 
         private async Task AddSymbol()
@@ -175,13 +209,15 @@ namespace TradingView_Example
                 .Select(p => (TradingViewSymbol)p.Tag)
                 .ToList();
 
-            selectedSymbolItems.ForEach(p => 
+            selectedSymbolItems.ForEach(p =>
             {
                 SelectedSymbols.Add(p);
                 Settings.Default.Symbols.Add(p.ToString());
             });
 
             Settings.Default.Save();
+
+            LoadSymbolsOnListView(selectedSymbolItems);
 
             await SubscribeSymbolsAsync(selectedSymbolItems);
         }
@@ -190,35 +226,11 @@ namespace TradingView_Example
         {
             foreach (var symbol in selectedItems)
             {
-                var key = $"{symbol.Exchange}:{symbol.Symbol}";
-
-                var existSymbol = false;
-                if (listViewSymbolList.InvokeRequired)
-                {
-                    Action safeWrite = delegate { existSymbol = listViewSymbolList.Items.ContainsKey(key); };
-
-                    listViewSymbolList.Invoke(safeWrite);
-                }
-                else
-                    existSymbol = listViewSymbolList.Items.ContainsKey(key);
-
-                if (existSymbol)
+                if (_tradingViewClient.SubscribedSymbols.Contains(symbol.ToString()))
                     continue;
 
-
-                var row = new[] { symbol.Symbol, symbol.Exchange, "", "", "" };
-                var listViewItem = new ListViewItem(row)
-                {
-                    Tag = symbol,
-                    Name = key
-                };
-
-                listViewSymbolList.InvokeUi(() => listViewSymbolList.Items.Add(listViewItem));
-
-                await _tradingViewClient.SubscribeSymbolsAsync(key);
+                await _tradingViewClient.SubscribeSymbolsAsync(symbol.ToString());
             }
-
-            listViewSymbolList.InvokeUi(() => listViewSearchResult.SelectedItems.Clear());
         }
 
         #endregion
@@ -246,12 +258,12 @@ namespace TradingView_Example
             if (selectedItem == null)
                 return;
 
-            await _tradingViewClient.UnsubscribeSymbolsAsync(selectedItem.Name);
+            await _tradingViewClient.UnsubscribeSymbolsAsync(selectedItem.Name).ConfigureAwait(false);
 
             ListViewSearchResultMakrckAsUnselected(selectedItem.Name);
 
             Settings.Default.Symbols.Remove(selectedItem.Name);
-            listViewSymbolList.Items.Remove(selectedItem);
+            listViewSymbolList.InvokeUi(() => listViewSymbolList.Items.Remove(selectedItem));
 
             SelectedSymbols.Remove(SelectedSymbols.FirstOrDefault(p => selectedItem.Name == p.ToString()));
 
@@ -261,7 +273,7 @@ namespace TradingView_Example
         private async Task UnsubscribeSymbolsAsync()
         {
             foreach (var item in SelectedSymbols)
-                await _tradingViewClient.UnsubscribeSymbolsAsync(item.ToString());
+                await _tradingViewClient.UnsubscribeSymbolsAsync(item.ToString()).ConfigureAwait(false);
         }
 
         #endregion
@@ -303,32 +315,47 @@ namespace TradingView_Example
 
         private async void LogoutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var dialogResult = MessageBox.Show($"Are you sure you want to log out?{Environment.NewLine}All your information will be deleted if you log out.", "Logout", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (dialogResult != DialogResult.Yes)
-                return;
+            if (Settings.Default.Symbols.Count != 0)
+            {
+                var dialogResult = MessageBox.Show($"Do you want your data to be backed up?", "Backup Data", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (dialogResult == DialogResult.Yes)
+                {
+                    var backupResult = BackupUserData();
+                    if (!backupResult)
+                        return;
+                }
+            }
 
-
-            await UnsubscribeSymbolsAsync();
+            await UnsubscribeSymbolsAsync().ConfigureAwait(false);
 
             Settings.Default.Reset();
             Settings.Default.Symbols = new StringCollection();
             SelectedSymbols = new List<TradingViewSymbol>();
 
-            loginToolStripMenuItem.Visible = true;
-            logoutToolStripMenuItem.Visible = false;
-            optionsToolStripMenuItem.Visible = false;
+            menuStripMain.InvokeUi(() =>
+            {
+                loginToolStripMenuItem.Visible = true;
+                logoutToolStripMenuItem.Visible = false;
+                toolsToolStripMenuItem.Visible = false;
+                exportToolStripMenuItem.Visible = false;
+                toolStripTextBoxUsername.Clear();
+            });
 
 
-            toolStripTextBoxUsername.Clear();
+            listViewSearchResult.InvokeUi(() => listViewSearchResult.Items.Clear());
+            listViewSymbolList.InvokeUi(() => listViewSymbolList.Items.Clear());
 
-            listViewSearchResult.Items.Clear();
-            listViewSymbolList.Items.Clear();
+            textBoxSymbol.InvokeUi(() =>
+            {
+                textBoxSymbol.Enabled = false;
+                textBoxSymbol.Clear();
+            });
 
-            textBoxSymbol.Enabled = false;
-            textBoxSymbol.Clear();
-
-            comboBoxExchanges.Enabled = false;
-            comboBoxExchanges.SelectedIndex = -1;
+            comboBoxExchanges.InvokeUi(() =>
+            {
+                comboBoxExchanges.Enabled = false;
+                comboBoxExchanges.SelectedIndex = -1;
+            });
         }
 
         #endregion
@@ -375,7 +402,7 @@ namespace TradingView_Example
             Settings.Default.Exchange = comboBoxExchanges.SelectedItem.ToString();
             Settings.Default.Save();
 
-            await SearchSymbolAsync();
+            await SearchSymbolAsync().ConfigureAwait(false);
         }
 
         #endregion
@@ -484,38 +511,276 @@ namespace TradingView_Example
 
         private void ContextMenuStriplistViewSymbolList_Opening(object sender, CancelEventArgs e)
         {
-            e.Cancel = listViewSymbolList.SelectedItems.Count != 1;
-            if (e.Cancel)
+            ClearAddListViewGroup();
+
+            if (listViewSymbolList.SelectedItems.Count != 1)
+            {
+                toolStripSeparator1.Visible = false;
+                toolStripSeparator2.Visible = false;
+                toolStripMenuItemAddAlert.Visible = false;
+                removeToolStripMenuItem.Visible = false;
                 return;
+            }
 
             var selectedItem = listViewSymbolList.SelectedItems[0];
             var tradingViewSymbol = selectedItem.Tag as TradingViewSymbol;
 
+            toolStripSeparator1.Visible = true;
+            toolStripSeparator2.Visible = true;
+            toolStripMenuItemAddAlert.Visible = true;
+            removeToolStripMenuItem.Visible = true;
             toolStripMenuItemAddAlert.Text = string.Format(toolStripMenuItemAddAlert.Tag.ToString(), tradingViewSymbol.Symbol);
-            toolStripMenuItemRemoveAlert.Text = string.Format(toolStripMenuItemRemoveAlert.Tag.ToString(), tradingViewSymbol.Symbol);
         }
 
         #endregion
 
-        #region Utilites
+        #region ExistToolStripMenuItem Click
+
+        private void ExistToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Settings.Default.MinimizeOnExist = false;
+            Application.Exit();
+        }
+
+        #endregion
+
+        #region MainForm_FormClosing
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!Settings.Default.MinimizeOnExist)
+                return;
+
+            WindowState = FormWindowState.Minimized;
+            ShowInTaskbar = false;
+
+            Hide();
+
+            e.Cancel = true;
+
+            return;
+        }
+
+        #endregion
+
+        #region NotifyIconMain MouseClick
+
+        private void NotifyIconMain_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left)
+                return;
+
+            if (WindowState != FormWindowState.Minimized)
+                return;
+
+            WindowState = FormWindowState.Normal;
+            ShowInTaskbar = true;
+            Visible = true;
+            Show();
+        }
+
+        #endregion
+
+        #region SettingsToolStripMenuItem Click
+
+        private void SettingsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            _settingsForm.ShowDialog();
+        }
+
+        #endregion
+
+        #region AddSectionToolStripMenuItem Click
+
+        private void AddSectionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            panelAddListViewGroup.BringToFront();
+            panelAddListViewGroup.Show();
+        }
+
+        #endregion
+
+        #region RemoveSectionToolStripMenuItem Click
+
+        private void RemoveSectionToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        #endregion
+
+        #region ButtonAddListViewGroup Click
+
+        private void ButtonAddListViewGroup_Click(object sender, EventArgs e)
+        {
+            if (textBoxListViewGroupName.Text.IsNullOrEmpty())
+            {
+                textBoxListViewGroupName.BackColor = Color.MistyRose;
+                return;
+            }
+
+            AddNewListViewGroup();
+            ClearAddListViewGroup();
+        }
+
+        private void AddNewListViewGroup()
+        {
+            var listVireGroup = new ListViewGroup
+            {
+                Header = textBoxListViewGroupName.Text,
+                Name = textBoxListViewGroupName.Text,
+                HeaderAlignment = HorizontalAlignment.Left
+            };
+
+            var listViewSymbolListSelectedItem = listViewSymbolList.SelectedItems.Count > 0 ? listViewSymbolList.SelectedItems[0] : null;
+
+            var allUnderSelectedItem = listViewSymbolListSelectedItem != null ? listViewSymbolList.Items.Cast<ListViewItem>().Where(p => p.Index >= listViewSymbolListSelectedItem.Index) : listViewSymbolList.Items.Cast<ListViewItem>();
+
+            listViewSymbolList.Groups.Add(listVireGroup);
+
+            foreach (ListViewItem item in allUnderSelectedItem)
+            {
+                item.Group = listVireGroup;
+                //var newItem = (ListViewItem)item.Clone();
+                //newItem.Name = item.Name;
+                //newItem.Group = listVireGroup;
+
+                //listViewSymbolList.Items.Remove(item);
+                //listViewSymbolList.Items.Add(item);
+            }
+        }
+
+        #endregion
+
+        #region ButtonCancelAddListViewGroup Click
+
+        private void ButtonCancelAddListViewGroup_Click(object sender, EventArgs e)
+        {
+            ClearAddListViewGroup();
+        }
+
+        private void ClearAddListViewGroup()
+        {
+            textBoxListViewGroupName.BackColor = Color.White;
+            textBoxListViewGroupName.Clear();
+            panelAddListViewGroup.SendToBack();
+            panelAddListViewGroup.Hide();
+        }
+
+        #endregion
+
+        #region RemoveToolStripMenuItem Click
+
+        private void RemoveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ButtonRemove_Click(buttonRemove, new EventArgs());
+        }
+
+        #endregion
+
+        #region ListViewSymbolList DoubleClick
+
+        private void ListViewSymbolList_DoubleClick(object sender, EventArgs e)
+        {
+            ToolStripMenuItemAddAlert_Click(toolStripMenuItemAddAlert, new EventArgs());
+        }
+
+        #endregion
+
+        #region ListViewSymbolList MouseMove
+
+        private void ListViewSymbolList_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Y > (listViewSymbolList.Items.Count * 20))
+                listViewSymbolList.Cursor = Cursors.Default;
+            else
+                listViewSymbolList.Cursor = Cursors.Hand;
+        }
+
+        #endregion
+
+        #region ListViewSearchResult MouseMove
+
+        private void ListViewSearchResult_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Y > (listViewSearchResult.Items.Count * 20))
+                listViewSearchResult.Cursor = Cursors.Default;
+            else
+                listViewSearchResult.Cursor = Cursors.Hand;
+        }
+
+        #endregion
+
+        #region ExistToolStripMenuItem1 Click
+
+        private void ExistToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            Settings.Default.MinimizeOnExist = false;
+            Application.Exit();
+        }
+
+        #endregion
+
+        #region ImportToolStripMenuItem Click
+
+        private async void ImportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var result = openFileDialogImport.ShowDialog();
+            if (result != DialogResult.OK)
+                return;
+
+            await RestoreUserDataAsync(openFileDialogImport.FileName).ConfigureAwait(false);
+        }
+
+        #endregion
+
+        #region ExportToolStripMenuItem Click
+
+        private void ExportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var backupResult = BackupUserData();
+            if (backupResult)
+                MessageBox.Show($"Data backup was successful.", "Backup Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        #endregion
+
+        #region Utilities
+
+        #region UpdateSelectedSymbols
+
+        private void UpdateSelectedSymbols(TradingViewSymbolPrice data)
+        {
+            if (!data.Price.HasValue)
+                return;
+
+            var symbol = SelectedSymbols.FirstOrDefault(p => p.ToString() == data.Symbol);
+            if (symbol == null)
+                return;
+
+            symbol.CurrentPrice = data.Price.Value;
+
+            if (!_alertsForm.TradingViewAlerts.Any())
+                return;
+
+            _alertsForm.InvokeAlert(data);
+        }
+
+        #endregion
 
         #region UpdateListViewSymbolList
 
         private void UpdateListViewSymbolList(TradingViewSymbolPrice data)
         {
+            if (WindowState != FormWindowState.Normal)
+                return;
+
             var item = listViewSymbolList.Items[data.Symbol];
             if (item == null)
                 return;
 
             if (data.Price.HasValue)
-            {
                 item.SubItems[2].Text = data.Price.Value.ToString();
-
-                _alertsForm.InvokeAlert(data);
-
-                var symbol = SelectedSymbols.FirstOrDefault(p => p.ToString() == data.Symbol);
-                symbol.CurrentPrice = data.Price.Value;
-            }
 
             if (data.Change.HasValue)
             {
@@ -552,7 +817,7 @@ namespace TradingView_Example
             listViewSymbolList.InsertionMark.Color = Color.Green;
 
             if (Settings.Default.Symbols == null)
-                Settings.Default.Symbols = new StringCollection();            
+                Settings.Default.Symbols = new StringCollection();
         }
 
         #endregion
@@ -568,7 +833,8 @@ namespace TradingView_Example
 
             loginToolStripMenuItem.Visible = false;
             logoutToolStripMenuItem.Visible = true;
-            optionsToolStripMenuItem.Visible = true;
+            toolsToolStripMenuItem.Visible = true;
+            exportToolStripMenuItem.Visible = true;
 
             toolStripTextBoxUsername.Text = Settings.Default.Username;
 
@@ -603,10 +869,11 @@ namespace TradingView_Example
 
         private async Task SearchSymbolAsync()
         {
-            var exchange = comboBoxExchanges.SelectedIndex >= 0 ? comboBoxExchanges.SelectedItem.ToString() : null;
+            var exchange = string.Empty;
+            comboBoxExchanges.InvokeUi(() => exchange = comboBoxExchanges.SelectedIndex >= 0 ? comboBoxExchanges.SelectedItem.ToString() : null);
 
             var searchedSymbol = textBoxSymbol.Text;
-            var searchResult = await _tradingViewClient.SearchSymbolAsync(searchedSymbol, exchange);
+            var searchResult = await _tradingViewClient.SearchSymbolAsync(searchedSymbol, exchange).ConfigureAwait(false);
             if (searchResult.Item1.HasValue())
                 MessageBox.Show(searchResult.Item1, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
@@ -624,7 +891,7 @@ namespace TradingView_Example
 
         private void FillListBox(IList<TradingViewSymbol> symbols)
         {
-            listViewSearchResult.Items.Clear();
+            listViewSearchResult.InvokeUi(() => listViewSearchResult.Items.Clear());
 
 
             foreach (var symbol in symbols)
@@ -642,7 +909,7 @@ namespace TradingView_Example
                 listViewItem.ForeColor = symbol.CanSelect ? SystemColors.WindowText : SystemColors.ScrollBar;
                 listViewItem.UseItemStyleForSubItems = true;
 
-                listViewSearchResult.Items.Add(listViewItem);
+                listViewSearchResult.InvokeUi(() => listViewSearchResult.Items.Add(listViewItem));
             }
         }
 
@@ -665,7 +932,8 @@ namespace TradingView_Example
 
         private void ListViewSearchResultMakrckAsUnselected(string symbolKey)
         {
-            var item = listViewSearchResult.Items[symbolKey];
+            ListViewItem item = null;
+            listViewSearchResult.InvokeUi(() => item = listViewSearchResult.Items[symbolKey]);
             if (item == null)
                 return;
 
@@ -693,6 +961,104 @@ namespace TradingView_Example
 
             Settings.Default.Symbols.AddRange(selectedSymbolItems);
             Settings.Default.Save();
+        }
+
+        #endregion
+
+        #region BackupUserData
+
+        private bool BackupUserData()
+        {
+            Settings.Default.Save();
+
+            saveFileDialogExport.FileName = $"TradingView-{Settings.Default.Username}-{DateTime.Now:MMddyyyyHHmmss}.xml";
+            var result = saveFileDialogExport.ShowDialog();
+            if (result != DialogResult.OK)
+                return true;
+
+            if (Path.GetExtension(saveFileDialogExport.FileName).ToLower() != ".xml")
+            {
+                MessageBox.Show($"The file extension required to store the information must be '.xml'.", "Backup Data", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal);
+                config.SaveAs(saveFileDialogExport.FileName, ConfigurationSaveMode.Full, forceSaveAll: true);
+
+                return true;
+            }
+            catch (Exception EX)
+            {
+                MessageBox.Show($"Error on saving file!{Environment.NewLine}Message:{EX.Message}", "Backup Data", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region RestoreUserData
+
+        private async Task<bool> RestoreUserDataAsync(string settingsFilePath)
+        {
+            var appSettings = Settings.Default;
+            var userLogedIn = appSettings.AuthToken.HasValue();
+
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal);
+                var appSettingsXmlName = appSettings.Context["GroupName"].ToString();
+                var import = XDocument.Load(settingsFilePath);
+                var settings = import.XPathSelectElements("//" + appSettingsXmlName).Single();
+
+                if (userLogedIn)
+                {
+                    settings.Elements().Single(p => p.Attribute("name").Value == "UserId").SetElementValue("value", appSettings.UserId);
+                    settings.Elements().Single(p => p.Attribute("name").Value == "Username").SetElementValue("value", appSettings.Username);
+                    settings.Elements().Single(p => p.Attribute("name").Value == "FirstName").SetElementValue("value", appSettings.FirstName);
+                    settings.Elements().Single(p => p.Attribute("name").Value == "LastName").SetElementValue("value", appSettings.LastName);
+                    settings.Elements().Single(p => p.Attribute("name").Value == "AuthToken").SetElementValue("value", appSettings.AuthToken);
+                }
+
+                config.GetSectionGroup("userSettings")
+                    .Sections[appSettingsXmlName]
+                    .SectionInformation
+                    .SetRawXml(settings.ToString());
+
+                config.Save(ConfigurationSaveMode.Full, forceSaveAll: true);
+                ConfigurationManager.RefreshSection("userSettings");
+
+                appSettings.Reload();
+                appSettings.Save();
+
+                if (appSettings.Exchange.HasValue())
+                    comboBoxExchanges.SelectedItem = appSettings.Exchange;
+
+                if (!userLogedIn)
+                    LoadUser();
+
+                if (appSettings.Symbols.Count > 0)
+                {
+                    LoadSelectedSymbols(appSettings.Symbols);
+
+                    await UnsubscribeSymbolsAsync().ConfigureAwait(false);
+
+                    LoadSymbolsOnListView(SelectedSymbols, clearItems: true);
+
+                    await SubscribeSymbolsAsync(SelectedSymbols).ConfigureAwait(false);
+
+                    await SearchSymbolAsync().ConfigureAwait(false);
+                }
+
+                return true;
+            }
+            catch (Exception EX)
+            {
+                MessageBox.Show($"Error on resoring file!{Environment.NewLine}Message:{EX.Message}", "Backup Data", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                appSettings.Reload();
+                return false;
+            }
         }
 
         #endregion

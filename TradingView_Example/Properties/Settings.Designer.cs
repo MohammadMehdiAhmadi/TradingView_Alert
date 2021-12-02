@@ -128,5 +128,41 @@ namespace TradingView_Example.Properties {
                 this["Alerts"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MinimizeOnExist {
+            get {
+                return ((bool)(this["MinimizeOnExist"]));
+            }
+            set {
+                this["MinimizeOnExist"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AutoStart {
+            get {
+                return ((bool)(this["AutoStart"]));
+            }
+            set {
+                this["AutoStart"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool StartMinimized {
+            get {
+                return ((bool)(this["StartMinimized"]));
+            }
+            set {
+                this["StartMinimized"] = value;
+            }
+        }
     }
 }
